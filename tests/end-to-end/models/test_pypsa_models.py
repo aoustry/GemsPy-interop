@@ -11,9 +11,9 @@
 # This file is part of the Antares project.
 
 import math
-from pathlib import Path
 import pandas as pd
 import pytest
+from pathlib import Path
 from andromede.model.parsing import parse_yaml_library
 from andromede.model.resolve_library import resolve_library
 from andromede.simulation.optimization import build_problem
