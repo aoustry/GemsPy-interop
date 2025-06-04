@@ -204,7 +204,7 @@ library:
         #- id: active #Parameter that is not instantiated: only active components are built by the data converter.
         #- id: build_year #Parameter not instantiated for now
         #- id: lifetime #Parameter not instantiated for now
-        #- id: p_nom_mod
+        #- id: p_nom_mod #Parameter not instantiated for now
         #- id: p_nom_extendable #Parameter that is not instantiated: p_nom_min and p_nom_max are used to possibly fix the value of p_nom
         - id: p_nom_min
           time-dependent: false
@@ -283,7 +283,7 @@ library:
       parameters:
         #- id: control #Parameter not instantiated for now
         #- id: type #Parameter not instantiated for now
-        #- id: p_nom_mod
+        #- id: p_nom_mod #Parameter not instantiated for now
         #- id: p_nom_extendable #Parameter that is not instantiated: p_nom_min and p_nom_max are used to possibly fix the value of p_nom
         - id: p_nom_min
           time-dependent: false
