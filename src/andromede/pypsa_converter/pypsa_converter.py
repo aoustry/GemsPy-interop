@@ -153,9 +153,9 @@ class PyPSAStudyConverter:
             co2_emissions=0,
             max_growth=any_to_float(inf),
         )
-        self.pypsa_network.carriers[
-            "carrier"
-        ] = self.pypsa_network.carriers.index.values
+        self.pypsa_network.carriers["carrier"] = (
+            self.pypsa_network.carriers.index.values
+        )
         ### Rename PyPSA components, to make sure that the names are uniques (used as id in the Andromede model)
         self.pypsa_network.loads.index = (
             self.pypsa_network.loads.index.astype(str) + "_load"
@@ -196,54 +196,69 @@ class PyPSAStudyConverter:
             self.pypsa_network.carriers, on="carrier", how="left", rsuffix="_carrier"
         )
         # Adding p_nom_min and p_nom_max to non-extendable generators
-        for field in ['p_nom_min','p_nom_max']:
-            self.pypsa_network.generators.loc[self.pypsa_network.generators['p_nom_extendable'] == False, field] = self.pypsa_network.generators['p_nom']
-        self.pypsa_network.generators.loc[self.pypsa_network.generators['p_nom_extendable'] == False, "capital_cost"] = 0.0
+        for field in ["p_nom_min", "p_nom_max"]:
+            self.pypsa_network.generators.loc[
+                self.pypsa_network.generators["p_nom_extendable"] == False, field
+            ] = self.pypsa_network.generators["p_nom"]
+        self.pypsa_network.generators.loc[
+            self.pypsa_network.generators["p_nom_extendable"] == False, "capital_cost"
+        ] = 0.0
 
     def _pypsa_stores_preprocessing(self) -> None:
         # Adding stores' information related to carriers
         for st in self.pypsa_network.stores.index:
             if len(self.pypsa_network.stores.loc[st, "carrier"]) == 0:
-                self.pypsa_network.storage_units.loc[
-                    st, "carrier"
-                ] = self.null_carrier_id
+                self.pypsa_network.storage_units.loc[st, "carrier"] = (
+                    self.null_carrier_id
+                )
         self.pypsa_network.stores = self.pypsa_network.stores.join(
             self.pypsa_network.carriers, on="carrier", how="left", rsuffix="_carrier"
         )
         # Adding e_nom_min and e_nom_max to non-extendable stores
-        for field in ['e_nom_min','e_nom_max']:
-            self.pypsa_network.stores.loc[self.pypsa_network.stores['e_nom_extendable'] == False, field] = self.pypsa_network.stores['e_nom']
-        self.pypsa_network.stores.loc[self.pypsa_network.stores['e_nom_extendable'] == False, "capital_cost"] = 0.0
+        for field in ["e_nom_min", "e_nom_max"]:
+            self.pypsa_network.stores.loc[
+                self.pypsa_network.stores["e_nom_extendable"] == False, field
+            ] = self.pypsa_network.stores["e_nom"]
+        self.pypsa_network.stores.loc[
+            self.pypsa_network.stores["e_nom_extendable"] == False, "capital_cost"
+        ] = 0.0
 
     def _pypsa_storages_preprocessing(self) -> None:
         # Adding storages' information related to carriers
         for st in self.pypsa_network.storage_units.index:
             if len(self.pypsa_network.storage_units.loc[st, "carrier"]) == 0:
-                self.pypsa_network.storage_units.loc[
-                    st, "carrier"
-                ] = self.null_carrier_id
+                self.pypsa_network.storage_units.loc[st, "carrier"] = (
+                    self.null_carrier_id
+                )
         self.pypsa_network.storage_units = self.pypsa_network.storage_units.join(
             self.pypsa_network.carriers, on="carrier", how="left", rsuffix="_carrier"
         )
         # Adding p_nom_min and p_nom_max to non-extendable storages
-        for field in ['p_nom_min','p_nom_max']:
-            self.pypsa_network.storage_units.loc[self.pypsa_network.storage_units['p_nom_extendable'] == False, field] = self.pypsa_network.storage_units['p_nom']
-        self.pypsa_network.storage_units.loc[self.pypsa_network.storage_units['p_nom_extendable'] == False, "capital_cost"] = 0.0
-    
+        for field in ["p_nom_min", "p_nom_max"]:
+            self.pypsa_network.storage_units.loc[
+                self.pypsa_network.storage_units["p_nom_extendable"] == False, field
+            ] = self.pypsa_network.storage_units["p_nom"]
+        self.pypsa_network.storage_units.loc[
+            self.pypsa_network.storage_units["p_nom_extendable"] == False,
+            "capital_cost",
+        ] = 0.0
+
     def _pypsa_links_preprocessing(self) -> None:
         # Adding storages' information related to carriers
         for st in self.pypsa_network.links.index:
             if len(self.pypsa_network.links.loc[st, "carrier"]) == 0:
-                self.pypsa_network.links.loc[
-                    st, "carrier"
-                ] = self.null_carrier_id
+                self.pypsa_network.links.loc[st, "carrier"] = self.null_carrier_id
         self.pypsa_network.links = self.pypsa_network.links.join(
             self.pypsa_network.carriers, on="carrier", how="left", rsuffix="_carrier"
         )
         # Adding p_nom_min and p_nom_max to non-extendable storages
-        for field in ['p_nom_min','p_nom_max']:
-            self.pypsa_network.links.loc[self.pypsa_network.links['p_nom_extendable'] == False, field] = self.pypsa_network.links['p_nom']
-        self.pypsa_network.links.loc[self.pypsa_network.links['p_nom_extendable'] == False, "capital_cost"] = 0.0
+        for field in ["p_nom_min", "p_nom_max"]:
+            self.pypsa_network.links.loc[
+                self.pypsa_network.links["p_nom_extendable"] == False, field
+            ] = self.pypsa_network.links["p_nom"]
+        self.pypsa_network.links.loc[
+            self.pypsa_network.links["p_nom_extendable"] == False, "capital_cost"
+        ] = 0.0
 
     def _register_pypsa_components(self) -> None:
         ### PyPSA components : Generators
@@ -309,7 +324,7 @@ class PyPSAStudyConverter:
                 "p_min_pu": "p_min_pu",
                 "p_max_pu": "p_max_pu",
                 "marginal_cost": "marginal_cost",
-                "capital_cost" : "capital_cost",
+                "capital_cost": "capital_cost",
             },
             {
                 "bus0": ("p0_port", "p_balance_port"),
@@ -391,32 +406,32 @@ class PyPSAStudyConverter:
                 ],
             )
             if carrier_attribute == "co2_emissions" and sense == "<=":
-                self.pypsa_globalconstraints_data[
-                    pypsa_model_id
-                ] = PyPSAGlobalConstraintData(
-                    name,
-                    carrier_attribute,
-                    sense,
-                    self.pypsa_network.global_constraints.loc[
-                        pypsa_model_id, "constant"
-                    ],
-                    "global_constraint_co2_max",
-                    "emission_port",
-                    andromede_components_and_ports,
+                self.pypsa_globalconstraints_data[pypsa_model_id] = (
+                    PyPSAGlobalConstraintData(
+                        name,
+                        carrier_attribute,
+                        sense,
+                        self.pypsa_network.global_constraints.loc[
+                            pypsa_model_id, "constant"
+                        ],
+                        "global_constraint_co2_max",
+                        "emission_port",
+                        andromede_components_and_ports,
+                    )
                 )
             if carrier_attribute == "co2_emissions" and sense == "==":
-                self.pypsa_globalconstraints_data[
-                    pypsa_model_id
-                ] = PyPSAGlobalConstraintData(
-                    name,
-                    carrier_attribute,
-                    sense,
-                    self.pypsa_network.global_constraints.loc[
-                        pypsa_model_id, "constant"
-                    ],
-                    "global_constraint_co2_eq",
-                    "emission_port",
-                    andromede_components_and_ports,
+                self.pypsa_globalconstraints_data[pypsa_model_id] = (
+                    PyPSAGlobalConstraintData(
+                        name,
+                        carrier_attribute,
+                        sense,
+                        self.pypsa_network.global_constraints.loc[
+                            pypsa_model_id, "constant"
+                        ],
+                        "global_constraint_co2_eq",
+                        "emission_port",
+                        andromede_components_and_ports,
+                    )
                 )
 
     def _register_pypsa_components_of_given_model(

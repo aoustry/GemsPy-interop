@@ -62,19 +62,25 @@ def test_load_gen(systems_dir: Path, series_dir: Path) -> None:
     # Testing the PyPSA_to_Andromede converter
     run_conversion_test(n1, n1.objective, "test_load_gen.yml", systems_dir, series_dir)
 
+
 @pytest.mark.parametrize(
     "capital_cost, p_nom_min,p_nom_max",
     [
-        (100.0, 0,5),
-        (1.0, 0,5),
-        (1.0, 0,100),
-        (.1, 0,100),
-        (100.0, 10,50),
-        (100.0, 50,50),
+        (100.0, 0, 5),
+        (1.0, 0, 5),
+        (1.0, 0, 100),
+        (0.1, 0, 100),
+        (100.0, 10, 50),
+        (100.0, 50, 50),
     ],
 )
-
-def test_load_gen_ext(systems_dir: Path, series_dir: Path, capital_cost: float, p_nom_min: float, p_nom_max: float) -> None:
+def test_load_gen_ext(
+    systems_dir: Path,
+    series_dir: Path,
+    capital_cost: float,
+    p_nom_min: float,
+    p_nom_max: float,
+) -> None:
     # Function to test the behaviour of Generator with "p_nom_extendable = True"
     T = 10
     n1 = pypsa.Network(name="Demo", snapshots=[i for i in range(T)])
@@ -104,7 +110,10 @@ def test_load_gen_ext(systems_dir: Path, series_dir: Path, capital_cost: float, 
     n1.optimize()
 
     # Testing the PyPSA_to_Andromede converter
-    run_conversion_test(n1, n1.objective, "test_load_gen_ext.yml", systems_dir, series_dir)
+    run_conversion_test(
+        n1, n1.objective, "test_load_gen_ext.yml", systems_dir, series_dir
+    )
+
 
 @pytest.mark.parametrize(
     "ratio, sense",
@@ -285,17 +294,21 @@ def test_load_gen_link(systems_dir: Path, series_dir: Path) -> None:
 @pytest.mark.parametrize(
     "capital_cost, p_nom_min,p_nom_max",
     [
-        (100.0, 0,50),
-        (1.0, 0,50),
-        (1.0, 0,100),
-        (.1, 0,100),
-        (100.0, 10,50),
-        (100.0, 50,50),
+        (100.0, 0, 50),
+        (1.0, 0, 50),
+        (1.0, 0, 100),
+        (0.1, 0, 100),
+        (100.0, 10, 50),
+        (100.0, 50, 50),
     ],
 )
-
-
-def test_load_gen_link_ext(systems_dir: Path, series_dir: Path, capital_cost: float, p_nom_min: float, p_nom_max: float) -> None:
+def test_load_gen_link_ext(
+    systems_dir: Path,
+    series_dir: Path,
+    capital_cost: float,
+    p_nom_min: float,
+    p_nom_max: float,
+) -> None:
     T = 10
     n1 = pypsa.Network(name="Demo2", snapshots=[i for i in range(T)])
     n1.add("Bus", "pypsatown", v_nom=1)
@@ -338,8 +351,8 @@ def test_load_gen_link_ext(systems_dir: Path, series_dir: Path, capital_cost: fl
         marginal_cost=0.5,
         p_nom_min=p_nom_min,
         p_nom_max=p_nom_max,
-        p_nom_extendable = True,
-        capital_cost = capital_cost,
+        p_nom_extendable=True,
+        capital_cost=capital_cost,
         p_min_pu=-1,
         p_max_pu=1,
     )
@@ -446,7 +459,6 @@ def test_storage_unit(
         (0.0, 0.05, 0.9, 4),
     ],
 )
-
 def test_storage_unit_ext(
     systems_dir: Path,
     series_dir: Path,
@@ -504,7 +516,7 @@ def test_storage_unit_ext(
         p_nom_min=100,  # MW
         p_nom_max=150,  # MW
         p_nom_extendable=True,
-        capital_cost = 1,
+        capital_cost=1,
         max_hours=4,  # Hours of storage at full output
         efficiency_store=efficiency_store,
         efficiency_dispatch=0.85,
@@ -595,9 +607,8 @@ def test_store(
     # Testing the PyPSA_to_Andromede converter
     run_conversion_test(n1, n1.objective, "test_store.yml", systems_dir, series_dir)
 
-def test_store_ext(
-    systems_dir: Path, series_dir: Path
-) -> None:
+
+def test_store_ext(systems_dir: Path, series_dir: Path) -> None:
     # Building the PyPSA test problem with a store
     T = 20
 
@@ -645,9 +656,9 @@ def test_store_ext(
         bus="pypsatown",
         e_nom_min=10.0,  # MWh
         e_nom_max=1000.0,  # MWh
-        e_nom_extendable = True,
+        e_nom_extendable=True,
         e_initial=100.0,
-        capital_cost = 10,
+        capital_cost=10,
         standing_loss=0.1,  # 1% loss per hour
         marginal_cost=1.0,  # €/MWh
         marginal_cost_storage=1.5,  # €/MWh
@@ -657,6 +668,7 @@ def test_store_ext(
 
     # Testing the PyPSA_to_Andromede converter
     run_conversion_test(n1, n1.objective, "test_store_ext.yml", systems_dir, series_dir)
+
 
 def run_conversion_test(
     pypsa_network: pypsa.Network,
