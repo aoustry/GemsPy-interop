@@ -99,15 +99,7 @@ def replace_lines_by_links(network: Network) -> Network:
         bus0 = line["bus0"]
         bus1 = line["bus1"]
         s_nom = line["s_nom"]
-
-        # Calculate efficiency based on line resistance and reactance
-        if False:  # "r" in line and "x" in line and (line["r"] > 0 or line["x"] > 0):
-            # Simple model: efficiency is reduced based on resistance
-            r_pu = line["r"]
-            efficiency = 1 / (1 + r_pu)
-        else:
-            # Default high efficiency if no resistance data
-            efficiency = 0.98
+        s_max_pu = line["s_max_pu"]
 
         # Add forward link
         network.add(
@@ -115,10 +107,10 @@ def replace_lines_by_links(network: Network) -> Network:
             f"{idx}-link-{bus0}-{bus1}",
             bus0=bus0,
             bus1=bus1,
-            p_min_pu=-1,
-            p_max_pu=1,
+            p_min_pu=-s_max_pu,
+            p_max_pu=s_max_pu,
             p_nom=s_nom,  # Use line capacity as link capacity
-            efficiency=efficiency,
+            efficiency=1.0,  # no transmission losses by default
         )
     network.remove("Line", lines.index)
     return network
