@@ -85,7 +85,7 @@ class PyPSAStudyConverter:
         self._preprocess_pypsa_components("generators")
         self._preprocess_pypsa_components("stores")
         self._preprocess_pypsa_components("storage_units")
-        self._pypsa_links_preprocessing("links")
+        self._preprocess_pypsa_components("links")
 
         self.pypsa_components_data: dict[str, PyPSAComponentData] = {}
         self._register_pypsa_components()
