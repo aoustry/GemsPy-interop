@@ -215,7 +215,8 @@ def main(file: str, load_scaling: float, activate_quota: bool) -> None:
 
 
 def test_case_pypsaeur_operational() -> None:
-    main("base_s_4_elec.nc", 0.8, True)
+    #main("base_s_4_elec.nc", 0.8, True)
+    main("base_s_6_elec_lvopt_.nc", 0.8, True)
 
 
 if __name__ == "__main__":

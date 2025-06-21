@@ -82,10 +82,10 @@ class PyPSAStudyConverter:
 
         self._pypsa_network_assertion()
         self._pypsa_network_preprocessing()
-        self._preprocess_pypsa_components("generators","p_nom")
-        self._preprocess_pypsa_components("stores","e_nom")
-        self._preprocess_pypsa_components("storage_units","p_nom")
-        self._preprocess_pypsa_components("links","p_nom")
+        self._preprocess_pypsa_components("generators", "p_nom")
+        self._preprocess_pypsa_components("stores", "e_nom")
+        self._preprocess_pypsa_components("storage_units", "p_nom")
+        self._preprocess_pypsa_components("links", "p_nom")
 
         self.pypsa_components_data: dict[str, PyPSAComponentData] = {}
         self._register_pypsa_components()
@@ -154,9 +154,9 @@ class PyPSAStudyConverter:
             co2_emissions=0,
             max_growth=any_to_float(inf),
         )
-        self.pypsa_network.carriers[
-            "carrier"
-        ] = self.pypsa_network.carriers.index.values
+        self.pypsa_network.carriers["carrier"] = (
+            self.pypsa_network.carriers.index.values
+        )
         ### Rename PyPSA components, to make sure that the names are uniques (used as id in the Gems model)
         self.pypsa_network.loads.index = (
             self.pypsa_network.loads.index.astype(str) + "_load"
@@ -199,14 +199,10 @@ class PyPSAStudyConverter:
         )
         df = getattr(self.pypsa_network, component_type)
         # Adding min and max capacities to non-extendable objects
-        for field in [capa_str+"_min", capa_str+"_max"]:
-            df.loc[
-               df[capa_str+"_extendable"] == False, field
-            ] = df[capa_str]
-        df.loc[
-            df[capa_str+"_extendable"] == False, "capital_cost"
-        ] = 0.0
-        
+        for field in [capa_str + "_min", capa_str + "_max"]:
+            df.loc[df[capa_str + "_extendable"] == False, field] = df[capa_str]
+        df.loc[df[capa_str + "_extendable"] == False, "capital_cost"] = 0.0
+
     def _register_pypsa_components(self) -> None:
         ### PyPSA components : Generators
         self._register_pypsa_components_of_given_model(
@@ -337,10 +333,8 @@ class PyPSAStudyConverter:
     def _register_pypsa_globalconstraints(self) -> None:
         gems_components_and_ports: list[tuple[str, str]] = []
         for component_type in ["generators", "stores", "storage_units"]:
-            gems_components_and_ports = (
-                self._add_contributors_to_globalconstraints(
-                    gems_components_and_ports, component_type
-                )
+            gems_components_and_ports = self._add_contributors_to_globalconstraints(
+                gems_components_and_ports, component_type
             )
 
         for pypsa_model_id in self.pypsa_network.global_constraints.index:
@@ -352,32 +346,32 @@ class PyPSAStudyConverter:
                 ],
             )
             if carrier_attribute == "co2_emissions" and sense == "<=":
-                self.pypsa_globalconstraints_data[
-                    pypsa_model_id
-                ] = PyPSAGlobalConstraintData(
-                    name,
-                    carrier_attribute,
-                    sense,
-                    self.pypsa_network.global_constraints.loc[
-                        pypsa_model_id, "constant"
-                    ],
-                    "global_constraint_co2_max",
-                    "emission_port",
-                    gems_components_and_ports,
+                self.pypsa_globalconstraints_data[pypsa_model_id] = (
+                    PyPSAGlobalConstraintData(
+                        name,
+                        carrier_attribute,
+                        sense,
+                        self.pypsa_network.global_constraints.loc[
+                            pypsa_model_id, "constant"
+                        ],
+                        "global_constraint_co2_max",
+                        "emission_port",
+                        gems_components_and_ports,
+                    )
                 )
             elif carrier_attribute == "co2_emissions" and sense == "==":
-                self.pypsa_globalconstraints_data[
-                    pypsa_model_id
-                ] = PyPSAGlobalConstraintData(
-                    name,
-                    carrier_attribute,
-                    sense,
-                    self.pypsa_network.global_constraints.loc[
-                        pypsa_model_id, "constant"
-                    ],
-                    "global_constraint_co2_eq",
-                    "emission_port",
-                    gems_components_and_ports,
+                self.pypsa_globalconstraints_data[pypsa_model_id] = (
+                    PyPSAGlobalConstraintData(
+                        name,
+                        carrier_attribute,
+                        sense,
+                        self.pypsa_network.global_constraints.loc[
+                            pypsa_model_id, "constant"
+                        ],
+                        "global_constraint_co2_eq",
+                        "emission_port",
+                        gems_components_and_ports,
+                    )
                 )
             else:
                 raise ValueError("Type of GlobalConstraint not supported.")
