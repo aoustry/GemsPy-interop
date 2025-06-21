@@ -82,10 +82,10 @@ class PyPSAStudyConverter:
 
         self._pypsa_network_assertion()
         self._pypsa_network_preprocessing()
-        self._pypsa_generator_preprocessing()
-        self._pypsa_stores_preprocessing()
-        self._pypsa_storages_preprocessing()
-        self._pypsa_links_preprocessing()
+        self._preprocess_pypsa_components("generators")
+        self._preprocess_pypsa_components("stores")
+        self._preprocess_pypsa_components("storage_units")
+        self._pypsa_links_preprocessing("links")
         self.pypsa_components_data: dict[str, PyPSAComponentData] = {}
         self._register_pypsa_components()
         self.pypsa_globalconstraints_data: dict[str, PyPSAGlobalConstraintData] = {}
@@ -187,6 +187,23 @@ class PyPSAStudyConverter:
         for key, val in self.pypsa_network.stores_t.items():
             val.columns = val.columns + "_store"
 
+    def _preprocess_pypsa_components(self, component_type: str) -> None:
+        df = getattr(self.pypsa_network, component_type)
+        for comp in df.index:
+            if len(df.loc[comp, "carrier"]) == 0:
+                df.loc[comp, "carrier"] = self.null_carrier_id
+        setattr(
+            self.pypsa_network,
+            component_type,
+            df.join(
+                self.pypsa_network.carriers,
+                on="carrier",
+                how="left",
+                rsuffix="_carrier",
+            )
+        )
+        
+    
     def _pypsa_generator_preprocessing(self) -> None:
         # Adding generators' information related to carriers
         for gen in self.pypsa_network.generators.index:
