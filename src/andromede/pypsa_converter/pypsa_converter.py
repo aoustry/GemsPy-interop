@@ -32,14 +32,14 @@ class PyPSAComponentData:
     pypsa_model_id: str
     constant_data: pd.DataFrame
     time_dependent_data: dict[str, pd.DataFrame]
-    andromede_model_id: str
-    pypsa_params_to_andromede_params: dict[str, str]
-    pypsa_params_to_andromede_connections: dict[str, tuple[str, str]]
+    gems_model_id: str
+    pypsa_params_to_gems_params: dict[str, str]
+    pypsa_params_to_gems_connections: dict[str, tuple[str, str]]
 
     def check_params_consistency(self) -> None:
-        for key in self.pypsa_params_to_andromede_params:
+        for key in self.pypsa_params_to_gems_params:
             self._check_key_in_constant_data(key)
-        for key in self.pypsa_params_to_andromede_connections:
+        for key in self.pypsa_params_to_gems_connections:
             self._check_key_in_constant_data(key)
 
     def _check_key_in_constant_data(self, key: str) -> None:
@@ -56,9 +56,9 @@ class PyPSAGlobalConstraintData:
     pypsa_carrier_attribute: str
     pypsa_sense: str
     pypsa_constant: float
-    andromede_model_id: str  # andromede model for this GlobalConstraint
-    andromede_port_id: str  # andromede port for this GlobalConstraint
-    andromede_components_and_ports: list[tuple[str, str]]
+    gems_model_id: str  # gems model for this GlobalConstraint
+    gems_port_id: str  # gems port for this GlobalConstraint
+    gems_components_and_ports: list[tuple[str, str]]
 
 
 class PyPSAStudyConverter:
@@ -82,10 +82,10 @@ class PyPSAStudyConverter:
 
         self._pypsa_network_assertion()
         self._pypsa_network_preprocessing()
-        self._preprocess_pypsa_components("generators")
-        self._preprocess_pypsa_components("stores")
-        self._preprocess_pypsa_components("storage_units")
-        self._preprocess_pypsa_components("links")
+        self._preprocess_pypsa_components("generators","p_nom")
+        self._preprocess_pypsa_components("stores","e_nom")
+        self._preprocess_pypsa_components("storage_units","p_nom")
+        self._preprocess_pypsa_components("links","p_nom")
 
         self.pypsa_components_data: dict[str, PyPSAComponentData] = {}
         self._register_pypsa_components()
@@ -157,7 +157,7 @@ class PyPSAStudyConverter:
         self.pypsa_network.carriers[
             "carrier"
         ] = self.pypsa_network.carriers.index.values
-        ### Rename PyPSA components, to make sure that the names are uniques (used as id in the Andromede model)
+        ### Rename PyPSA components, to make sure that the names are uniques (used as id in the Gems model)
         self.pypsa_network.loads.index = (
             self.pypsa_network.loads.index.astype(str) + "_load"
         )
@@ -182,7 +182,7 @@ class PyPSAStudyConverter:
         for key, val in self.pypsa_network.stores_t.items():
             val.columns = val.columns + "_store"
 
-    def _preprocess_pypsa_components(self, component_type: str) -> None:
+    def _preprocess_pypsa_components(self, component_type: str, capa_str: str) -> None:
         df = getattr(self.pypsa_network, component_type)
         for comp in df.index:
             if len(df.loc[comp, "carrier"]) == 0:
@@ -195,83 +195,18 @@ class PyPSAStudyConverter:
                 on="carrier",
                 how="left",
                 rsuffix="_carrier",
-            )
+            ),
         )
+        df = getattr(self.pypsa_network, component_type)
+        # Adding min and max capacities to non-extendable objects
+        for field in [capa_str+"_min", capa_str+"_max"]:
+            df.loc[
+               df[capa_str+"_extendable"] == False, field
+            ] = df[capa_str]
+        df.loc[
+            df[capa_str+"_extendable"] == False, "capital_cost"
+        ] = 0.0
         
-    
-    def _pypsa_generator_preprocessing(self) -> None:
-        # Adding generators' information related to carriers
-        for gen in self.pypsa_network.generators.index:
-            if len(self.pypsa_network.generators.loc[gen, "carrier"]) == 0:
-                self.pypsa_network.generators.loc[gen, "carrier"] = self.null_carrier_id
-        self.pypsa_network.generators = self.pypsa_network.generators.join(
-            self.pypsa_network.carriers, on="carrier", how="left", rsuffix="_carrier"
-        )
-        # Adding p_nom_min and p_nom_max to non-extendable generators
-        for field in ["p_nom_min", "p_nom_max"]:
-            self.pypsa_network.generators.loc[
-                self.pypsa_network.generators["p_nom_extendable"] == False, field
-            ] = self.pypsa_network.generators["p_nom"]
-        self.pypsa_network.generators.loc[
-            self.pypsa_network.generators["p_nom_extendable"] == False, "capital_cost"
-        ] = 0.0
-
-    def _pypsa_stores_preprocessing(self) -> None:
-        # Adding stores' information related to carriers
-        for st in self.pypsa_network.stores.index:
-            if len(self.pypsa_network.stores.loc[st, "carrier"]) == 0:
-                self.pypsa_network.storage_units.loc[
-                    st, "carrier"
-                ] = self.null_carrier_id
-        self.pypsa_network.stores = self.pypsa_network.stores.join(
-            self.pypsa_network.carriers, on="carrier", how="left", rsuffix="_carrier"
-        )
-        # Adding e_nom_min and e_nom_max to non-extendable stores
-        for field in ["e_nom_min", "e_nom_max"]:
-            self.pypsa_network.stores.loc[
-                self.pypsa_network.stores["e_nom_extendable"] == False, field
-            ] = self.pypsa_network.stores["e_nom"]
-        self.pypsa_network.stores.loc[
-            self.pypsa_network.stores["e_nom_extendable"] == False, "capital_cost"
-        ] = 0.0
-
-    def _pypsa_storages_preprocessing(self) -> None:
-        # Adding storages' information related to carriers
-        for st in self.pypsa_network.storage_units.index:
-            if len(self.pypsa_network.storage_units.loc[st, "carrier"]) == 0:
-                self.pypsa_network.storage_units.loc[
-                    st, "carrier"
-                 ] = self.null_carrier_id
-        self.pypsa_network.storage_units = self.pypsa_network.storage_units.join(
-            self.pypsa_network.carriers, on="carrier", how="left", rsuffix="_carrier"
-        )
-        # Adding p_nom_min and p_nom_max to non-extendable storages
-        for field in ["p_nom_min", "p_nom_max"]:
-            self.pypsa_network.storage_units.loc[
-                self.pypsa_network.storage_units["p_nom_extendable"] == False, field
-            ] = self.pypsa_network.storage_units["p_nom"]
-        self.pypsa_network.storage_units.loc[
-            self.pypsa_network.storage_units["p_nom_extendable"] == False,
-            "capital_cost",
-        ] = 0.0
-
-    def _pypsa_links_preprocessing(self) -> None:
-        # Adding storages' information related to carriers
-        for st in self.pypsa_network.links.index:
-            if len(self.pypsa_network.links.loc[st, "carrier"]) == 0:
-                self.pypsa_network.links.loc[st, "carrier"] = self.null_carrier_id
-        self.pypsa_network.links = self.pypsa_network.links.join(
-            self.pypsa_network.carriers, on="carrier", how="left", rsuffix="_carrier"
-        )
-        # Adding p_nom_min and p_nom_max to non-extendable storages
-        for field in ["p_nom_min", "p_nom_max"]:
-            self.pypsa_network.links.loc[
-                self.pypsa_network.links["p_nom_extendable"] == False, field
-            ] = self.pypsa_network.links["p_nom"]
-        self.pypsa_network.links.loc[
-            self.pypsa_network.links["p_nom_extendable"] == False, "capital_cost"
-        ] = 0.0
-
     def _register_pypsa_components(self) -> None:
         ### PyPSA components : Generators
         self._register_pypsa_components_of_given_model(
@@ -390,21 +325,21 @@ class PyPSAStudyConverter:
         )
 
     def _add_contributors_to_globalconstraints(
-        self, andromede_components_and_ports: list[tuple[str, str]], component_type: str
+        self, gems_components_and_ports: list[tuple[str, str]], component_type: str
     ) -> list[tuple[str, str]]:
         df = getattr(self.pypsa_network, component_type)
-        andromede_components_and_ports += [
+        gems_components_and_ports += [
             (comp, "emission_port")
             for comp in df[df["carrier"] != self.null_carrier_id].index
         ]
-        return andromede_components_and_ports
+        return gems_components_and_ports
 
     def _register_pypsa_globalconstraints(self) -> None:
-        andromede_components_and_ports: list[tuple[str, str]] = []
+        gems_components_and_ports: list[tuple[str, str]] = []
         for component_type in ["generators", "stores", "storage_units"]:
-            andromede_components_and_ports = (
+            gems_components_and_ports = (
                 self._add_contributors_to_globalconstraints(
-                    andromede_components_and_ports, component_type
+                    gems_components_and_ports, component_type
                 )
             )
 
@@ -428,7 +363,7 @@ class PyPSAStudyConverter:
                     ],
                     "global_constraint_co2_max",
                     "emission_port",
-                    andromede_components_and_ports,
+                    gems_components_and_ports,
                 )
             elif carrier_attribute == "co2_emissions" and sense == "==":
                 self.pypsa_globalconstraints_data[
@@ -442,7 +377,7 @@ class PyPSAStudyConverter:
                     ],
                     "global_constraint_co2_eq",
                     "emission_port",
-                    andromede_components_and_ports,
+                    gems_components_and_ports,
                 )
             else:
                 raise ValueError("Type of GlobalConstraint not supported.")
@@ -452,9 +387,9 @@ class PyPSAStudyConverter:
         pypsa_model_id: str,
         constant_data: pd.DataFrame,
         time_dependent_data: dict[str, pd.DataFrame],
-        andromede_model_id: str,
-        pypsa_params_to_andromede_params: dict[str, str],
-        pypsa_params_to_andromede_connections: dict[str, tuple[str, str]],
+        gems_model_id: str,
+        pypsa_params_to_gems_params: dict[str, str],
+        pypsa_params_to_gems_connections: dict[str, tuple[str, str]],
     ) -> None:
         if pypsa_model_id in self.pypsa_components_data:
             raise ValueError(f"{pypsa_model_id} already registered !")
@@ -463,13 +398,13 @@ class PyPSAStudyConverter:
             pypsa_model_id,
             constant_data,
             time_dependent_data,
-            andromede_model_id,
-            pypsa_params_to_andromede_params,
-            pypsa_params_to_andromede_connections,
+            gems_model_id,
+            pypsa_params_to_gems_params,
+            pypsa_params_to_gems_connections,
         )
 
-    def to_andromede_study(self) -> InputSystem:
-        """Main function, to export PyPSA as Andromede system"""
+    def to_gems_study(self) -> InputSystem:
+        """Main function, to export PyPSA as Gems system"""
 
         self.logger.info("Study conversion started")
         list_components, list_connections = [], []
@@ -504,7 +439,7 @@ class PyPSAStudyConverter:
         """
 
         self.logger.info(
-            f"Creating objects of type: {pypsa_components_data.andromede_model_id}. "
+            f"Creating objects of type: {pypsa_components_data.gems_model_id}. "
         )
 
         # We test whether the keys of the conversion dictionary are allowed in the PyPSA model : all authorized parameters are columns in the constant data frame (even though they are specified as time-varying values in the time-varying data frame)
@@ -512,22 +447,22 @@ class PyPSAStudyConverter:
 
         # List of params that may be time-dependent in the pypsa model, among those we want to keep
         time_dependent_params = set(
-            pypsa_components_data.pypsa_params_to_andromede_params
+            pypsa_components_data.pypsa_params_to_gems_params
         ).intersection(set(pypsa_components_data.time_dependent_data.keys()))
         # Save time series and memorize the time-dependent parameters
         comp_param_to_timeseries_name = self._write_and_register_timeseries(
             pypsa_components_data.time_dependent_data, time_dependent_params
         )
 
-        connections = self._create_andromede_connections(
+        connections = self._create_gems_connections(
             pypsa_components_data.constant_data,
-            pypsa_components_data.pypsa_params_to_andromede_connections,
+            pypsa_components_data.pypsa_params_to_gems_connections,
         )
 
-        components = self._create_andromede_components(
+        components = self._create_gems_components(
             pypsa_components_data.constant_data,
-            pypsa_components_data.andromede_model_id,
-            pypsa_components_data.pypsa_params_to_andromede_params,
+            pypsa_components_data.gems_model_id,
+            pypsa_components_data.pypsa_params_to_gems_params,
             comp_param_to_timeseries_name,
         )
         return components, connections
@@ -536,12 +471,12 @@ class PyPSAStudyConverter:
         self, pypsa_gc_data: PyPSAGlobalConstraintData
     ) -> tuple[list[InputComponent], list[InputPortConnections]]:
         self.logger.info(
-            f"Creating PyPSA GlobalConstraint of type: {pypsa_gc_data.andromede_model_id}. "
+            f"Creating PyPSA GlobalConstraint of type: {pypsa_gc_data.gems_model_id}. "
         )
         components = [
             InputComponent(
                 id=pypsa_gc_data.pypsa_name,
-                model=f"{self.pypsalib_id}.{pypsa_gc_data.andromede_model_id}",
+                model=f"{self.pypsalib_id}.{pypsa_gc_data.gems_model_id}",
                 parameters=[
                     InputComponentParameter(
                         id="quota",
@@ -553,11 +488,11 @@ class PyPSAStudyConverter:
             )
         ]
         connections = []
-        for component_id, port_id in pypsa_gc_data.andromede_components_and_ports:
+        for component_id, port_id in pypsa_gc_data.gems_components_and_ports:
             connections.append(
                 InputPortConnections(
                     component1=pypsa_gc_data.pypsa_name,
-                    port1=pypsa_gc_data.andromede_port_id,
+                    port1=pypsa_gc_data.gems_port_id,
                     component2=component_id,
                     port2=port_id,
                 )
@@ -584,11 +519,11 @@ class PyPSAStudyConverter:
 
         return comp_param_to_timeseries_name
 
-    def _create_andromede_components(
+    def _create_gems_components(
         self,
         constant_data: pd.DataFrame,
-        andromede_model_id: str,
-        pypsa_params_to_andromede_params: dict[str, str],
+        gems_model_id: str,
+        pypsa_params_to_gems_params: dict[str, str],
         comp_param_to_timeseries_name: dict[tuple[str, str], str],
     ) -> list[InputComponent]:
         components = []
@@ -596,10 +531,10 @@ class PyPSAStudyConverter:
             components.append(
                 InputComponent(
                     id=component,
-                    model=f"{self.pypsalib_id}.{andromede_model_id}",
+                    model=f"{self.pypsalib_id}.{gems_model_id}",
                     parameters=[
                         InputComponentParameter(
-                            id=pypsa_params_to_andromede_params[param],
+                            id=pypsa_params_to_gems_params[param],
                             time_dependent=(component, param)
                             in comp_param_to_timeseries_name,
                             scenario_dependent=False,
@@ -609,22 +544,22 @@ class PyPSAStudyConverter:
                                 else any_to_float(constant_data.loc[component, param])
                             ),
                         )
-                        for param in pypsa_params_to_andromede_params
+                        for param in pypsa_params_to_gems_params
                     ],
                 )
             )
         return components
 
-    def _create_andromede_connections(
+    def _create_gems_connections(
         self,
         constant_data: pd.DataFrame,
-        pypsa_params_to_andromede_connections: dict[str, tuple[str, str]],
+        pypsa_params_to_gems_connections: dict[str, tuple[str, str]],
     ) -> list[InputPortConnections]:
         connections = []
         for bus_id, (
             model_port,
             bus_port,
-        ) in pypsa_params_to_andromede_connections.items():
+        ) in pypsa_params_to_gems_connections.items():
             buses = constant_data[bus_id].values
             for component_id, component in enumerate(constant_data.index):
                 connections.append(
