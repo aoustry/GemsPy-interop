@@ -1,4 +1,4 @@
-# Copyright (c) 2024, RTE (https://www.rte-france.com)
+# Copyright (c) 2025, RTE (https://www.rte-france.com)
 #
 # See AUTHORS.txt
 #
@@ -37,16 +37,16 @@ library:
         - id: v_nom
           time-dependent: false
           scenario-dependent: false
-        #- id: type #Parameter not instantiated for now
+        #- id: type # This parameter is not used in the Gems model
         - id: x
           time-dependent: false
           scenario-dependent: false
         - id: y
           time-dependent: false
           scenario-dependent: false
-        #- id : carrier #Parameter not instantiated for now
-        #- id : unit #Parameter not instantiated for now
-        #- id : location #Parameter not instantiated for now
+        #- id : carrier # This parameter is not used in the Gems model
+        #- id : unit # This parameter is not used in the Gems model
+        #- id : location # This parameter is not used in the Gems model
         - id: v_mag_pu_set
           time-dependent: true
           scenario-dependent: false
@@ -70,8 +70,8 @@ library:
     - id: load
       #Model for PyPSA load: https://pypsa.readthedocs.io/en/latest/user-guide/components.html#load
       parameters:
-        #- id : carrier #Parameter not instantiated for now
-        #- id : type #Parameter not instantiated for now
+        #- id : carrier # This parameter is not used in the Gems model
+        #- id : type # This parameter is not used in the Gems model
         - id: p_set
           time-dependent: true
           scenario-dependent: true
@@ -99,9 +99,9 @@ library:
     #Model for PyPSA generator: https://pypsa.readthedocs.io/en/latest/user-guide/components.html#generator
       parameters:
         #- id: control #Parameter not instantiated for now
-        #- id: type #Parameter not instantiated for now
+        #- id: type # This parameter is not used in the Gems model
         #- id: p_nom_mod #Parameter not instantiated for now
-        #- id: p_nom_extendable #Parameter that is not instantiated: p_nom_min and p_nom_max are used to possibly fix the value of p_nom
+        #- id: p_nom_extendable #Parameter that is not used in Gems model: p_nom_min and p_nom_max are used to possibly fix the value of p_nom
         - id: p_nom_min
           time-dependent: false
           scenario-dependent: false 
@@ -125,7 +125,7 @@ library:
         - id: sign #default value = 1
           time-dependent: false
           scenario-dependent: false
-        #- id: carrier #Parameter not instantiated for now
+        #- id: carrier # This parameter is not used in the Gems model
         - id: marginal_cost
           time-dependent: true
           scenario-dependent: false
@@ -196,8 +196,8 @@ library:
     - id: link
     #Model for PyPSA link: https://pypsa.readthedocs.io/en/latest/user-guide/components.html#link
       parameters:
-        #- id: type #Parameter not instantiated for now
-        #- id: carrier #Parameter not instantiated for now
+        #- id: type # This parameter is not used in the Gems model
+        #- id: carrier # This parameter is not used in the Gems model
         - id: efficiency
           time-dependent: true
           scenario-dependent: false
@@ -282,7 +282,7 @@ library:
      #Model for PyPSA storage unit: https://pypsa.readthedocs.io/en/latest/user-guide/components.html#storage-unit
       parameters:
         #- id: control #Parameter not instantiated for now
-        #- id: type #Parameter not instantiated for now
+        #- id: type # This parameter is not used in the Gems model
         #- id: p_nom_mod #Parameter not instantiated for now
         #- id: p_nom_extendable #Parameter that is not instantiated: p_nom_min and p_nom_max are used to possibly fix the value of p_nom
         - id: p_nom_min
@@ -302,7 +302,7 @@ library:
         - id: sign #default value = 1
           time-dependent: false
           scenario-dependent: false
-        #- id: carrier #Parameter not instantiated for now
+        #- id: carrier # This parameter is not used in the Gems model
         - id: spill_cost #Parameter not instantiated for now
           time-dependent: true
           scenario-dependent: false
@@ -386,8 +386,8 @@ library:
     - id: store
       #Model for PyPSA store: https://pypsa.readthedocs.io/en/latest/user-guide/components.html#store
       parameters:
-        #- id: type #Parameter not instantiated for now
-        #- id: carrier #Parameter not instantiated for now
+        #- id: type # This parameter is not used in the Gems model
+        #- id: carrier # This parameter is not used in the Gems model
         #- id: e_nom_mod #Parameter not instantiated for now
         #- id: e_nom_extendable #Parameter that is not instantiated: e_nom_min and e_nom_max are used to possibly fix the value of e_nom
         - id: e_nom_min
