@@ -208,7 +208,9 @@ def main(file: str, load_scaling: float, activate_quota: bool) -> None:
     pypsa_network.optimize()
     logger.info(f"PyPSA objective value: {pypsa_network.objective}")
     assert math.isclose(
-        pypsa_network.objective, problem.solver.Objective().Value(), rel_tol=1e-6
+        pypsa_network.objective + pypsa_network.objective_constant,
+        problem.solver.Objective().Value(),
+        rel_tol=1e-6,
     )
 
 

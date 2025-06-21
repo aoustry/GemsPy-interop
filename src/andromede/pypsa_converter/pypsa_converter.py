@@ -85,6 +85,8 @@ class PyPSAStudyConverter:
         self._preprocess_pypsa_components("generators")
         self._preprocess_pypsa_components("stores")
         self._preprocess_pypsa_components("storage_units")
+        self._pypsa_links_preprocessing("links")
+
         self.pypsa_components_data: dict[str, PyPSAComponentData] = {}
         self._register_pypsa_components()
         self.pypsa_globalconstraints_data: dict[str, PyPSAGlobalConstraintData] = {}
@@ -193,8 +195,82 @@ class PyPSAStudyConverter:
                 on="carrier",
                 how="left",
                 rsuffix="_carrier",
-            ),
+            )
         )
+        
+    
+    def _pypsa_generator_preprocessing(self) -> None:
+        # Adding generators' information related to carriers
+        for gen in self.pypsa_network.generators.index:
+            if len(self.pypsa_network.generators.loc[gen, "carrier"]) == 0:
+                self.pypsa_network.generators.loc[gen, "carrier"] = self.null_carrier_id
+        self.pypsa_network.generators = self.pypsa_network.generators.join(
+            self.pypsa_network.carriers, on="carrier", how="left", rsuffix="_carrier"
+        )
+        # Adding p_nom_min and p_nom_max to non-extendable generators
+        for field in ["p_nom_min", "p_nom_max"]:
+            self.pypsa_network.generators.loc[
+                self.pypsa_network.generators["p_nom_extendable"] == False, field
+            ] = self.pypsa_network.generators["p_nom"]
+        self.pypsa_network.generators.loc[
+            self.pypsa_network.generators["p_nom_extendable"] == False, "capital_cost"
+        ] = 0.0
+
+    def _pypsa_stores_preprocessing(self) -> None:
+        # Adding stores' information related to carriers
+        for st in self.pypsa_network.stores.index:
+            if len(self.pypsa_network.stores.loc[st, "carrier"]) == 0:
+                self.pypsa_network.storage_units.loc[
+                    st, "carrier"
+                ] = self.null_carrier_id
+        self.pypsa_network.stores = self.pypsa_network.stores.join(
+            self.pypsa_network.carriers, on="carrier", how="left", rsuffix="_carrier"
+        )
+        # Adding e_nom_min and e_nom_max to non-extendable stores
+        for field in ["e_nom_min", "e_nom_max"]:
+            self.pypsa_network.stores.loc[
+                self.pypsa_network.stores["e_nom_extendable"] == False, field
+            ] = self.pypsa_network.stores["e_nom"]
+        self.pypsa_network.stores.loc[
+            self.pypsa_network.stores["e_nom_extendable"] == False, "capital_cost"
+        ] = 0.0
+
+    def _pypsa_storages_preprocessing(self) -> None:
+        # Adding storages' information related to carriers
+        for st in self.pypsa_network.storage_units.index:
+            if len(self.pypsa_network.storage_units.loc[st, "carrier"]) == 0:
+                self.pypsa_network.storage_units.loc[
+                    st, "carrier"
+                 ] = self.null_carrier_id
+        self.pypsa_network.storage_units = self.pypsa_network.storage_units.join(
+            self.pypsa_network.carriers, on="carrier", how="left", rsuffix="_carrier"
+        )
+        # Adding p_nom_min and p_nom_max to non-extendable storages
+        for field in ["p_nom_min", "p_nom_max"]:
+            self.pypsa_network.storage_units.loc[
+                self.pypsa_network.storage_units["p_nom_extendable"] == False, field
+            ] = self.pypsa_network.storage_units["p_nom"]
+        self.pypsa_network.storage_units.loc[
+            self.pypsa_network.storage_units["p_nom_extendable"] == False,
+            "capital_cost",
+        ] = 0.0
+
+    def _pypsa_links_preprocessing(self) -> None:
+        # Adding storages' information related to carriers
+        for st in self.pypsa_network.links.index:
+            if len(self.pypsa_network.links.loc[st, "carrier"]) == 0:
+                self.pypsa_network.links.loc[st, "carrier"] = self.null_carrier_id
+        self.pypsa_network.links = self.pypsa_network.links.join(
+            self.pypsa_network.carriers, on="carrier", how="left", rsuffix="_carrier"
+        )
+        # Adding p_nom_min and p_nom_max to non-extendable storages
+        for field in ["p_nom_min", "p_nom_max"]:
+            self.pypsa_network.links.loc[
+                self.pypsa_network.links["p_nom_extendable"] == False, field
+            ] = self.pypsa_network.links["p_nom"]
+        self.pypsa_network.links.loc[
+            self.pypsa_network.links["p_nom_extendable"] == False, "capital_cost"
+        ] = 0.0
 
     def _register_pypsa_components(self) -> None:
         ### PyPSA components : Generators
@@ -204,10 +280,12 @@ class PyPSAStudyConverter:
             self.pypsa_network.generators_t,
             "generator",
             {
-                "p_nom": "p_nom",
+                "p_nom_min": "p_nom_min",
+                "p_nom_max": "p_nom_max",
                 "p_min_pu": "p_min_pu",
                 "p_max_pu": "p_max_pu",
                 "marginal_cost": "marginal_cost",
+                "capital_cost": "capital_cost",
                 "e_sum_min": "e_sum_min",
                 "e_sum_max": "e_sum_max",
                 "sign": "sign",
@@ -253,10 +331,12 @@ class PyPSAStudyConverter:
             "link",
             {
                 "efficiency": "efficiency",
-                "p_nom": "p_nom",
+                "p_nom_min": "p_nom_min",
+                "p_nom_max": "p_nom_max",
                 "p_min_pu": "p_min_pu",
                 "p_max_pu": "p_max_pu",
                 "marginal_cost": "marginal_cost",
+                "capital_cost": "capital_cost",
             },
             {
                 "bus0": ("p0_port", "p_balance_port"),
@@ -270,7 +350,8 @@ class PyPSAStudyConverter:
             self.pypsa_network.storage_units_t,
             "storage_unit",
             {
-                "p_nom": "p_nom",
+                "p_nom_min": "p_nom_min",
+                "p_nom_max": "p_nom_max",
                 "p_min_pu": "p_min_pu",
                 "p_max_pu": "p_max_pu",
                 "sign": "sign",
@@ -279,6 +360,7 @@ class PyPSAStudyConverter:
                 "standing_loss": "standing_loss",
                 "max_hours": "max_hours",
                 "marginal_cost": "marginal_cost",
+                "capital_cost": "capital_cost",
                 "marginal_cost_storage": "marginal_cost_storage",
                 "spill_cost": "spill_cost",
                 "inflow": "inflow",
@@ -294,14 +376,13 @@ class PyPSAStudyConverter:
             "store",
             {
                 "sign": "sign",
-                "e_nom": "e_nom",
-                "e_nom_extendable": "e_nom_extendable",
                 "e_nom_min": "e_nom_min",
                 "e_nom_max": "e_nom_max",
                 "e_min_pu": "e_min_pu",
                 "e_max_pu": "e_max_pu",
                 "standing_loss": "standing_loss",
                 "marginal_cost": "marginal_cost",
+                "capital_cost": "capital_cost",
                 "marginal_cost_storage": "marginal_cost_storage",
                 "co2_emissions": "emission_factor",
             },
