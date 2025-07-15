@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from math import inf
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from pypsa import Network
@@ -68,6 +69,7 @@ class PyPSAStudyConverter:
         logger: logging.Logger,
         system_dir: Path,
         series_dir: Path,
+        series_file_format: str,
     ):
         """
         Initialize processor
@@ -79,13 +81,25 @@ class PyPSAStudyConverter:
         self.pypsalib_id = "pypsa_models"
         self.null_carrier_id = "null"
         self.system_name = pypsa_network.name
+        self.series_file_format = series_file_format
 
+        self.pypsa_components = [
+            "buses",
+            "loads",
+            "generators",
+            "stores",
+            "storage_units",
+            "links",
+            "lines",
+            "transformers",
+        ]
         self._pypsa_network_assertion()
         self._pypsa_network_preprocessing()
-        self._preprocess_pypsa_components("generators", "p_nom")
-        self._preprocess_pypsa_components("stores", "e_nom")
-        self._preprocess_pypsa_components("storage_units", "p_nom")
-        self._preprocess_pypsa_components("links", "p_nom")
+        self._preprocess_pypsa_components("loads", False, "/")
+        self._preprocess_pypsa_components("generators", True, "p_nom")
+        self._preprocess_pypsa_components("stores", True, "e_nom")
+        self._preprocess_pypsa_components("storage_units", True, "p_nom")
+        self._preprocess_pypsa_components("links", True, "p_nom")
 
         self.pypsa_components_data: dict[str, PyPSAComponentData] = {}
         self._register_pypsa_components()
@@ -111,6 +125,9 @@ class PyPSAStudyConverter:
         ### PyPSA components : Links
         if not (all((self.pypsa_network.links["active"] == 1))):
             raise ValueError(f"Converter supports only Links with active = 1")
+        ### PyPSA components : Lines
+        if not len(self.pypsa_network.lines) == 0:
+            raise ValueError(f"Converter does not support Lines yet")
         ### PyPSA components : Storage Units
         if not (all((self.pypsa_network.links["active"] == 1))):
             raise ValueError(f"Converter supports only Storage Units with active = 1")
@@ -146,6 +163,22 @@ class PyPSAStudyConverter:
                 == "co2_emissions"
             )
 
+    def _rename_buses(self) -> None:
+        ### Rename PyPSA buses, to delete spaces
+        if len(self.pypsa_network.buses) > 0:
+            self.pypsa_network.buses.index = self.pypsa_network.buses.index.str.replace(
+                " ", "_"
+            )
+            for _, val in self.pypsa_network.buses_t.items():
+                val.columns = val.columns.str.replace(" ", "_")
+        ### Update the 'bus' columns for the different types of PyPSA components
+        for component_type in self.pypsa_components:
+            df = getattr(self.pypsa_network, component_type)
+            if len(df) > 0:
+                for col in ["bus", "bus0", "bus1"]:
+                    if col in df.columns:
+                        df[col] = df[col].str.replace(" ", "_")
+
     def _pypsa_network_preprocessing(self) -> None:
         ###Add fictitious carrier
         self.pypsa_network.add(
@@ -157,32 +190,31 @@ class PyPSAStudyConverter:
         self.pypsa_network.carriers[
             "carrier"
         ] = self.pypsa_network.carriers.index.values
+        self._rename_buses()
+
+    def _rename_pypsa_components(self, component_type: str) -> None:
+        df = getattr(self.pypsa_network, component_type)
+        if len(df) == 0:
+            return
         ### Rename PyPSA components, to make sure that the names are uniques (used as id in the Gems model)
-        self.pypsa_network.loads.index = (
-            self.pypsa_network.loads.index.astype(str) + "_load"
-        )
-        for key, val in self.pypsa_network.loads_t.items():
-            val.columns = val.columns + "_load"
+        prefix = component_type[:-1]
+        df.index = prefix + "_" + df.index.str.replace(" ", "_")
+        dictionnary = getattr(self.pypsa_network, component_type + "_t")
+        for _, val in dictionnary.items():
+            val.columns = prefix + "_" + val.columns.str.replace(" ", "_")
 
-        self.pypsa_network.generators.index = (
-            self.pypsa_network.generators.index.astype(str) + "_generator"
-        )
-        for key, val in self.pypsa_network.generators_t.items():
-            val.columns = val.columns + "_generator"
+    def _fix_capacities(self, component_type: str, capa_str: str) -> None:
+        df = getattr(self.pypsa_network, component_type)
+        if len(df) == 0:
+            return
+        ### Adding min and max capacities to non-extendable objects
+        for field in [capa_str + "_min", capa_str + "_max"]:
+            df.loc[df[capa_str + "_extendable"] == False, field] = df[capa_str]
+            df.loc[df[capa_str + "_extendable"] == False, "capital_cost"] = 0.0
 
-        self.pypsa_network.storage_units.index = (
-            self.pypsa_network.storage_units.index.astype(str) + "_storage"
-        )
-        for key, val in self.pypsa_network.storage_units_t.items():
-            val.columns = val.columns + "_storage"
-
-        self.pypsa_network.stores.index = (
-            self.pypsa_network.stores.index.astype(str) + "_store"
-        )
-        for key, val in self.pypsa_network.stores_t.items():
-            val.columns = val.columns + "_store"
-
-    def _preprocess_pypsa_components(self, component_type: str, capa_str: str) -> None:
+    def _preprocess_pypsa_components(
+        self, component_type: str, extendable: bool, capa_str: str
+    ) -> None:
         ### Handling PyPSA objects without carriers
         df = getattr(self.pypsa_network, component_type)
         for comp in df.index:
@@ -198,11 +230,9 @@ class PyPSAStudyConverter:
                 rsuffix="_carrier",
             ),
         )
-        df = getattr(self.pypsa_network, component_type)
-        ### Adding min and max capacities to non-extendable objects
-        for field in [capa_str + "_min", capa_str + "_max"]:
-            df.loc[df[capa_str + "_extendable"] == False, field] = df[capa_str]
-        df.loc[df[capa_str + "_extendable"] == False, "capital_cost"] = 0.0
+        self._rename_pypsa_components(component_type)
+        if extendable:
+            self._fix_capacities(component_type, capa_str)
 
     def _register_pypsa_components(self) -> None:
         ### PyPSA components : Generators
@@ -507,7 +537,7 @@ class PyPSAStudyConverter:
                 timeseries_name = self.system_name + "_" + component + "_" + param
                 comp_param_to_timeseries_name[(component, param)] = timeseries_name
                 param_df[[component]].to_csv(
-                    self.series_dir / Path(timeseries_name + ".txt"),
+                    self.series_dir / Path(timeseries_name + self.series_file_format),
                     index=False,
                     header=False,
                 )

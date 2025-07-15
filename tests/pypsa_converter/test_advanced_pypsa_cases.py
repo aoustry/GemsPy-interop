@@ -18,6 +18,7 @@ converts it to Gems format, and runs the converted study.
 """
 
 import math
+import os
 from pathlib import Path
 
 from pypsa import Network
@@ -66,7 +67,6 @@ def extend_quota(network: Network) -> Network:
     # Temporary function, used while the GlobalConstraint model is not implemented yet.
     # Set the CO2 bound to very large value
     network.global_constraints["constant"][0] = 10000000000
-
     return network
 
 
@@ -99,15 +99,7 @@ def replace_lines_by_links(network: Network) -> Network:
         bus0 = line["bus0"]
         bus1 = line["bus1"]
         s_nom = line["s_nom"]
-
-        # Calculate efficiency based on line resistance and reactance
-        if False:  # "r" in line and "x" in line and (line["r"] > 0 or line["x"] > 0):
-            # Simple model: efficiency is reduced based on resistance
-            r_pu = line["r"]
-            efficiency = 1 / (1 + r_pu)
-        else:
-            # Default high efficiency if no resistance data
-            efficiency = 0.98
+        efficiency = 1.0
 
         # Add forward link
         network.add(
@@ -124,7 +116,9 @@ def replace_lines_by_links(network: Network) -> Network:
     return network
 
 
-def main(file: str, load_scaling: float, activate_quota: bool) -> None:
+def pypsa_gemspy_benchmark(
+    file: str, load_scaling: float, activate_quota: bool
+) -> None:
     """
     Main function to convert a PyPSA study to Gems format and run it.
     """
@@ -154,11 +148,10 @@ def main(file: str, load_scaling: float, activate_quota: bool) -> None:
     # Get the number of timesteps
     T = len(pypsa_network.snapshots)
     logger.info(f"Number of timesteps: {T}")
-    print(pypsa_network)
     # Convert to Gems System
     logger.info("Converting PyPSA network to Gems format...")
     input_system_from_pypsa_converter = convert_pypsa_network(
-        pypsa_network, systems_dir, series_dir
+        pypsa_network.copy(), systems_dir, series_dir, ".txt"
     )
 
     # Save the InputSystem to YAML
@@ -214,11 +207,7 @@ def main(file: str, load_scaling: float, activate_quota: bool) -> None:
     )
 
 
-def test_case_pypsaeur_operational() -> None:
-    # main("base_s_4_elec.nc", 0.8, True)
-    main("base_s_6_elec_lvopt_.nc", 0.4, True)
-    main("base_s_6_elec_lvopt_.nc", 0.3, True)
-
-
-if __name__ == "__main__":
-    test_case_pypsaeur_operational()
+def test_case_gemspy() -> None:
+    pypsa_gemspy_benchmark("base_s_6_elec_lvopt_.nc", 0.4, True)
+    pypsa_gemspy_benchmark("base_s_6_elec_lvopt_.nc", 0.3, True)
+    pypsa_gemspy_benchmark("simple.nc", 1.0, False)
