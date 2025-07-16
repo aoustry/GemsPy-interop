@@ -23,11 +23,11 @@ from pathlib import Path
 
 from pypsa import Network
 
-from andromede.input_converter.src.logger import Logger
-from andromede.model.parsing import parse_yaml_library
-from andromede.model.resolve_library import resolve_library
-from andromede.pypsa_converter.utils import transform_to_yaml
-from andromede.study.resolve_components import resolve_system
+from gems.input_converter.src.logger import Logger
+from gems.model.parsing import parse_yaml_library
+from gems.model.resolve_library import resolve_library
+from gems.pypsa_converter.utils import transform_to_yaml
+from gems.study.resolve_components import resolve_system
 from tests.pypsa_converter.utils import build_problem_from_system, convert_pypsa_network
 
 
@@ -166,9 +166,7 @@ def pypsa_gemspy_benchmark(
     logger.info("Loading model library...")
     # Get the path to the project root by going up two levels from the current directory
     project_root = Path(__file__).parents[2]
-    pypsa_models_path = (
-        project_root / "src/andromede/libs/pypsa_models/pypsa_models.yml"
-    )
+    pypsa_models_path = project_root / "src/gems/libs/pypsa_models/pypsa_models.yml"
     logger.info(f"Loading PyPSA models from {pypsa_models_path}...")
     with open(pypsa_models_path) as lib_file:
         input_libraries = [parse_yaml_library(lib_file)]
